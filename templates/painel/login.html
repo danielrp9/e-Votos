@@ -1,0 +1,28 @@
+{% extends "painel/base_painel.html" %}
+{% block title %}Acesso da comissão{% endblock %}
+{% block site_header %}{% endblock %}
+{% block main_class %}mx-auto flex min-h-screen max-w-5xl items-center justify-center px-6 py-10{% endblock %}
+{% block content %}
+<section class="mx-auto w-full max-w-md rounded-lg border border-slate-200 bg-white p-8 shadow-sm">
+    <p class="text-sm font-semibold uppercase tracking-wider text-indigo-700">Área restrita</p>
+    <h1 class="mt-2 text-2xl font-semibold">Acesso da comissão</h1>
+    <p class="mt-2 text-sm leading-6 text-slate-600">Entre com uma conta autorizada da equipe eleitoral.</p>
+    <form method="post" class="mt-7 space-y-4">
+        {% csrf_token %}
+        {% if formulario.non_field_errors %}
+            <div class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800">{{ formulario.non_field_errors }}</div>
+        {% endif %}
+        {% for campo in formulario %}
+            <div>
+                <label class="block text-sm font-medium" for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+                {{ campo }}
+                {% for erro in campo.errors %}<p class="mt-1 text-sm text-rose-700">{{ erro }}</p>{% endfor %}
+            </div>
+        {% endfor %}
+        <button class="w-full rounded-lg bg-indigo-700 px-4 py-3 text-sm font-semibold text-white hover:bg-indigo-800" type="submit">Entrar no painel</button>
+    </form>
+</section>
+<footer class="mt-5 text-center">
+    <a href="{% url 'eleicao:auditoria_publica' %}" class="text-xs font-medium text-slate-500 hover:text-indigo-700">Auditoria Pública</a>
+</footer>
+{% endblock %}

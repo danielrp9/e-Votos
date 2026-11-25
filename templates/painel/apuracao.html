@@ -1,0 +1,237 @@
+{% extends "painel/base_painel.html" %}
+{% block title %}Apuração{% endblock %}
+{% block breadcrumbs %}
+    <nav aria-label="Breadcrumb" class="text-xs text-slate-500">
+        <ol class="flex flex-wrap items-center gap-2">
+            <li><a href="{% url 'eleicao:painel' %}" class="hover:text-indigo-700">Visão Geral</a></li>
+            {% if eleicao %}
+                <li aria-hidden="true">&gt;</li>
+                <li><a href="{% url 'eleicao:painel_eleicoes' %}" class="hover:text-indigo-700">Eleições</a></li>
+                <li aria-hidden="true">&gt;</li>
+                <li><a href="{% url 'eleicao:painel_eleicao_detalhes' eleicao.pk %}" class="max-w-48 truncate hover:text-indigo-700">{{ eleicao.titulo }}</a></li>
+            {% endif %}
+            <li aria-hidden="true">&gt;</li>
+            <li aria-current="page" class="font-medium text-slate-700">Apuração</li>
+        </ol>
+    </nav>
+{% endblock %}
+{% block page_back %}
+    <a href="{% if eleicao %}{% url 'eleicao:painel_eleicao_detalhes' eleicao.pk %}{% else %}{% url 'eleicao:painel' %}{% endif %}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900" aria-label="Voltar" title="Voltar">
+        <svg class="h-4 w-4 stroke-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m15 19-7-7 7-7"/>
+        </svg>
+    </a>
+{% endblock %}
+{% block page_header %}
+    <h1 class="text-2xl font-semibold sm:text-3xl">Apuração</h1>
+    <p class="mt-1 text-sm text-slate-500">A contagem nominal só é liberada após o encerramento da eleição.</p>
+{% endblock %}
+{% block page_actions %}
+    {% if eleicao and eleicao.status_atual == "ENCERRADA" %}
+        <a class="no-print w-full rounded-lg border border-slate-300 px-3 py-2 text-center text-sm font-semibold hover:bg-slate-50 sm:w-auto" href="{% url 'eleicao:painel_comparecimento_csv' %}?eleicao={{ eleicao.pk }}">Exportar CSV</a>
+        <button class="no-print w-full rounded-lg bg-indigo-700 px-3 py-2 text-sm font-semibold text-white sm:w-auto" onclick="window.print()" type="button">Imprimir</button>
+    {% endif %}
+{% endblock %}
+{% block content %}
+    <div class="space-y-6">
+        <form method="get" class="no-print flex w-full flex-wrap gap-3 rounded-lg border border-slate-200 bg-white p-4">
+            <select id="apuracao-eleicao-atual" name="eleicao" required class="min-w-64 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
+                <option value="">Selecione uma eleição</option>
+                {% if eleicoes_em_andamento %}
+                    <optgroup label="Eleições em andamento">
+                        {% for opcao in eleicoes_em_andamento %}
+                            <option value="{{ opcao.pk }}" {% if eleicao.pk == opcao.pk %}selected{% endif %}>{{ opcao.titulo }}</option>
+                        {% endfor %}
+                    </optgroup>
+                {% endif %}
+                {% if ultima_eleicao_encerrada %}
+                    <optgroup label="Última eleição encerrada — disponível para apuração">
+                        <option value="{{ ultima_eleicao_encerrada.pk }}" {% if eleicao.pk == ultima_eleicao_encerrada.pk %}selected{% endif %}>{{ ultima_eleicao_encerrada.titulo }}</option>
+                    </optgroup>
+                {% endif %}
+            </select>
+            <button class="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white" type="submit">Consultar</button>
+        </form>
+        <p class="no-print -mt-4 text-sm text-slate-500">A lista principal mostra eleições em andamento e a mais recente encerrada. Eleições passadas ficam disponíveis em “Apurações anteriores”.</p>
+        {% if eleicoes_anteriores %}
+            <details class="no-print rounded-lg border border-slate-200 bg-white p-4" {% if eleicao_historica_selecionada %}open{% endif %}>
+                <summary class="cursor-pointer font-semibold text-slate-800">Apurações anteriores ({{ eleicoes_anteriores|length }})</summary>
+                <form method="get" class="mt-4 flex w-full flex-wrap gap-3">
+                    <select id="apuracao-eleicao-historica" name="eleicao" required class="min-w-64 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
+                        <option value="">Selecione uma eleição encerrada</option>
+                        {% for opcao in eleicoes_anteriores %}
+                            <option value="{{ opcao.pk }}" {% if eleicao.pk == opcao.pk %}selected{% endif %}>{{ opcao.titulo }} — encerrada em {{ opcao.data_fim|date:"d/m/Y" }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50" type="submit">Consultar histórico</button>
+                </form>
+            </details>
+        {% endif %}
+
+        {% if eleicao %}
+            {% if eleicao.status_atual != "ENCERRADA" %}
+                <div class="rounded-lg border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">A apuração será liberada quando esta eleição estiver encerrada.</div>
+            {% else %}
+                <article class="print-sheet space-y-6">
+                    <header class="print-card rounded-lg border border-slate-200 bg-white p-6">
+                        <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Comissão Eleitoral</p>
+                        <h2 class="mt-2 text-2xl font-semibold">Boletim de urna — Apuração</h2>
+                        <p class="mt-1 text-lg font-medium text-slate-700">{{ eleicao.titulo }}</p>
+                        <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                            <div>
+                                <dt class="font-semibold text-slate-500">Período oficial</dt>
+                                <dd class="mt-1">{{ eleicao.data_inicio|date:"d/m/Y H:i" }} – {{ eleicao.data_fim|date:"d/m/Y H:i" }}</dd>
+                            </div>
+                            <div>
+                                <dt class="font-semibold text-slate-500">Status</dt>
+                                <dd class="mt-1">Encerrada</dd>
+                            </div>
+                            <div>
+                                <dt class="font-semibold text-slate-500">Emitido em</dt>
+                                <dd class="mt-1">{% now "d/m/Y H:i" %}</dd>
+                            </div>
+                            <div>
+                                <dt class="font-semibold text-slate-500">Documento</dt>
+                                <dd class="mt-1">Apuração oficial</dd>
+                            </div>
+                        </dl>
+                    </header>
+
+                    <section class="print-card rounded-lg border border-slate-200 bg-white p-6" aria-labelledby="apuracao-resumo">
+                        <h3 id="apuracao-resumo" class="text-lg font-semibold">Resumo / Totalização</h3>
+                        <div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-sm text-slate-500">Total de votos</p>
+                                <p class="mt-2 text-2xl font-semibold">{{ total_votos }}</p>
+                            </div>
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-sm text-slate-500">Total de Eleitores Aptos</p>
+                                <p class="mt-2 text-2xl font-semibold">{{ total_eleitores_aptos }}</p>
+                            </div>
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-sm text-slate-500">Comparecimento</p>
+                                <p class="mt-2 text-2xl font-semibold">{{ comparecimento }}</p>
+                                <p class="text-sm text-slate-500">{{ percentual_comparecimento|floatformat:2 }}%</p>
+                            </div>
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-sm text-slate-500">Abstenções</p>
+                                <p class="mt-2 text-2xl font-semibold">{{ abstencoes }}</p>
+                                <p class="text-sm text-slate-500">{{ percentual_abstencoes|floatformat:2 }}%</p>
+                            </div>
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-sm text-slate-500">Total de Votos Válidos</p>
+                                <p class="mt-2 text-2xl font-semibold">{{ total_votos_validos }}</p>
+                            </div>
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-sm text-slate-500">Votos Brancos</p>
+                                <p class="mt-2 text-2xl font-semibold">{{ votos_brancos }}</p>
+                            </div>
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-sm text-slate-500">Votos Nulos</p>
+                                <p class="mt-2 text-2xl font-semibold">{{ votos_nulos }}</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="print-card rounded-lg border border-slate-200 bg-white p-6" aria-labelledby="apuracao-chapas">
+                        <h3 id="apuracao-chapas" class="text-lg font-semibold">Resultado por Chapa</h3>
+                        {% if integridade_ok %}
+                            <p class="mt-1 text-sm text-slate-500">Percentuais calculados sobre o total de votos válidos.</p>
+                            <div class="print-table-wrap mt-4 overflow-x-auto">
+                                <table class="print-table w-full table-fixed border-collapse text-left text-sm">
+                                    <colgroup>
+                                        <col class="w-[14%]">
+                                        <col class="w-[46%]">
+                                        <col class="w-[20%]">
+                                        <col class="w-[20%]">
+                                    </colgroup>
+                                    <thead>
+                                        <tr class="border-b-2 border-slate-300 text-xs uppercase tracking-wide text-slate-500">
+                                            <th scope="col" class="px-3 py-3">Número</th>
+                                            <th scope="col" class="px-3 py-3">Chapa</th>
+                                            <th scope="col" class="px-3 py-3 text-right">Votos</th>
+                                            <th scope="col" class="px-3 py-3 text-right">Percentual</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for chapa in resultados %}
+                                            <tr class="border-b border-slate-200 {% if chapa.vencedora %}bg-emerald-50 font-semibold text-emerald-950{% endif %}">
+                                                <td class="whitespace-nowrap px-3 py-3">{{ chapa.numero }}</td>
+                                                <td class="break-words px-3 py-3">
+                                                    <span>{{ chapa.nome }}</span>
+                                                    {% if chapa.vencedora %}<span class="ml-2 inline-block rounded-lg bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">Vencedora</span>{% endif %}
+                                                </td>
+                                                <td class="whitespace-nowrap px-3 py-3 text-right">{{ chapa.total_votos }}</td>
+                                                <td class="whitespace-nowrap px-3 py-3 text-right">{{ chapa.percentual|floatformat:2 }}%</td>
+                                            </tr>
+                                        {% empty %}
+                                            <tr><td colspan="4" class="px-3 py-4 text-sm text-slate-500">Nenhuma chapa cadastrada.</td></tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" role="alert">
+                                <p class="font-semibold">Resultado ocultado: divergência de integridade.</p>
+                                <p class="mt-1">A contagem por chapa só será exibida após a conferência dos registros.</p>
+                            </div>
+                        {% endif %}
+                    </section>
+
+                    <section class="print-card print-flow-card rounded-lg border border-slate-200 bg-white p-6" aria-labelledby="apuracao-integridade">
+                        <h3 id="apuracao-integridade" class="text-lg font-semibold">Conferência de Integridade &amp; Boletim de Urna</h3>
+                        <div class="mt-4 grid gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-sm text-slate-500">Total de Votos</p>
+                                <p class="mt-1 text-xl font-semibold">{{ total_votos }}</p>
+                            </div>
+                            <p class="text-center text-lg font-bold text-slate-500" aria-label="igual a">==</p>
+                            <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                                <p class="text-sm text-slate-500">Total de Votantes</p>
+                                <p class="mt-1 text-xl font-semibold">{{ total_eleitores_que_votaram }}</p>
+                            </div>
+                        </div>
+                        <div class="mt-4 rounded-lg border p-4 {% if integridade_ok %}border-emerald-200 bg-emerald-50 text-emerald-900{% else %}border-rose-200 bg-rose-50 text-rose-900{% endif %}">
+                            <p class="font-semibold">{% if integridade_ok %}Integridade validada{% else %}Divergência detectada{% endif %}</p>
+                            <p class="mt-1 text-sm">{% if integridade_ok %}Total de Votos == Total de Votantes.{% else %}Os totais não coincidem; os comprovantes e a apuração por chapa ficam ocultos até a investigação.{% endif %}</p>
+                        </div>
+                        {% if integridade_ok %}
+                            <div class="print-receipts mt-6">
+                                <h4 class="font-semibold">Comprovantes registrados</h4>
+                                <p class="mt-1 text-sm text-slate-500">Códigos embaralhados; não identificam eleitores nem escolhas.</p>
+                                <ul class="mt-4 grid grid-cols-2 gap-2 print:gap-1 print:text-[10px] sm:grid-cols-3">
+                                    {% for codigo in comprovantes %}
+                                        <li class="print-receipt min-w-0 rounded-lg border border-slate-200 px-2 py-2 text-center font-mono text-xs leading-5 tracking-normal whitespace-nowrap print:leading-4 print:text-[10px]">{{ codigo }}</li>
+                                    {% empty %}
+                                        <li class="col-span-full text-sm text-slate-500">Nenhum voto registrado.</li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
+                        {% endif %}
+                    </section>
+
+                    <section class="print-card print-signatures rounded-lg border border-slate-200 bg-white p-6" aria-labelledby="apuracao-assinaturas">
+                        <h3 id="apuracao-assinaturas" class="text-lg font-semibold">Quadro de Assinaturas</h3>
+                        <div class="mt-6 grid grid-cols-1 gap-8">
+                            <div class="space-y-5">
+                                <h4 class="font-semibold">Comissão Eleitoral</h4>
+                                {% for membro in membros_comissao %}
+                                    <div class="print-signature">
+                                        <div class="h-8 border-b border-slate-400"></div>
+                                        <p class="mt-2 text-sm">{% if membro %}{{ membro }}{% else %}Membro da Comissão Eleitoral{% endif %} <span class="text-slate-500">— assinatura</span></p>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </section>
+
+                    <footer class="print-card rounded-lg border border-slate-200 bg-white p-4 text-xs text-slate-600">
+                        <p class="font-semibold">Assinatura digital do Boletim de Urna (SHA-256)</p>
+                        <p class="mt-2 break-all font-mono">{{ assinatura_digital }}</p>
+                        <p class="mt-2">Calculada a partir do ID da eleição, dos votos por chapa e dos comprovantes ordenados.</p>
+                    </footer>
+                </article>
+            {% endif %}
+        {% endif %}
+    </div>
+{% endblock %}

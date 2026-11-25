@@ -1,0 +1,262 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}Painel da Comissão{% endblock %} · e-Votos — Sistema Eleitoral</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Questrial&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        if (localStorage.getItem("painel-sidebar-state") === "collapsed") {
+            document.documentElement.classList.add("sidebar-collapsed");
+        }
+    </script>
+    <style>
+        body { font-family: "DM Sans", sans-serif; }
+        h1, h2, h3 { font-family: "Questrial", sans-serif; }
+        #panel-sidebar, #panel-layout { transition: width 180ms ease, margin-left 180ms ease; }
+        #sidebar-toggle svg { transition: transform 180ms ease; }
+        @media (min-width: 768px) {
+            html.sidebar-collapsed #panel-sidebar { width: 5rem; }
+            html.sidebar-collapsed #panel-layout { margin-left: 5rem; }
+            html.sidebar-collapsed .sidebar-label { display: none; }
+            html.sidebar-collapsed .sidebar-link,
+            html.sidebar-collapsed #sidebar-toggle { justify-content: center; }
+            html.sidebar-collapsed .sidebar-brand-row {
+                flex-direction: column;
+                justify-content: center;
+                gap: .5rem;
+            }
+            html.sidebar-collapsed .sidebar-link { padding-left: .75rem; padding-right: .75rem; }
+            html.sidebar-collapsed .sidebar-header { padding-left: .25rem; padding-right: .25rem; }
+            html.sidebar-collapsed #sidebar-toggle svg { transform: rotate(180deg); }
+            html.sidebar-collapsed .sidebar-profile { justify-content: center; }
+            html.sidebar-collapsed .sidebar-profile-copy { display: none; }
+            html.sidebar-collapsed .sidebar-footer { gap: 0; padding-left: .25rem; padding-right: .25rem; }
+            html.sidebar-collapsed .sidebar-profile { padding-left: 0; padding-right: 0; }
+            html.sidebar-collapsed .sidebar-profile-avatar,
+            html.sidebar-collapsed .sidebar-logout { height: 2rem; width: 2rem; }
+            html.sidebar-collapsed .sidebar-logout { padding: 0; }
+        }
+        @page {
+            size: A4;
+            margin: 12mm;
+        }
+        @media print {
+            .no-print { display: none !important; }
+            html, body, #panel-layout {
+                width: 100% !important;
+                min-height: 0 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background: #fff !important;
+            }
+            #panel-layout { margin-left: 0 !important; }
+            main, main > div {
+                width: 100% !important;
+                max-width: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .print-sheet {
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                border: 0 !important;
+                border-radius: 0 !important;
+                background: #fff !important;
+                box-shadow: none !important;
+            }
+            .print-card {
+                break-inside: avoid;
+                page-break-inside: avoid;
+                box-shadow: none !important;
+            }
+            .print-receipts, .print-signatures {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .print-flow-card {
+                break-inside: auto;
+                page-break-inside: auto;
+            }
+            .print-table {
+                width: 100% !important;
+                table-layout: fixed;
+                border-collapse: collapse !important;
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .print-table-wrap { overflow: visible !important; }
+            .print-table thead { display: table-header-group; }
+            .print-table tr, .print-signature, .print-receipt {
+                break-inside: avoid;
+                page-break-inside: avoid;
+            }
+            .print-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900">
+    {% if request.user.is_authenticated and request.user.is_staff %}
+        <button id="mobile-sidebar-backdrop" class="no-print fixed inset-0 z-30 hidden bg-slate-950/40 md:hidden" type="button" aria-label="Fechar menu"></button>
+        <aside id="panel-sidebar" class="no-print fixed inset-y-0 left-0 z-40 hidden flex w-64 flex-col border-r border-slate-200 bg-white md:flex">
+            <div class="sidebar-header border-b border-slate-100 px-4 py-3.5">
+                <div class="sidebar-brand-row flex items-center justify-between gap-2">
+                    <a href="{% url 'eleicao:painel' %}" class="flex min-w-0 items-center gap-3" title="e-Votos — Sistema Eleitoral">
+                        <span class="sidebar-brand-mark flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-700 text-sm font-bold text-white" aria-hidden="true">eV</span>
+                        <span class="sidebar-label min-w-0">
+                            <span class="block text-base font-semibold leading-tight text-slate-900">e-Votos</span>
+                            <span class="block whitespace-nowrap text-xs text-slate-500">Sistema Eleitoral</span>
+                        </span>
+                    </a>
+                    <button id="mobile-sidebar-close" class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 md:hidden" type="button" aria-label="Fechar menu" title="Fechar menu">
+                        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m6 6 12 12M18 6 6 18"/></svg>
+                    </button>
+                    <button id="sidebar-toggle" class="hidden shrink-0 items-center justify-center p-1.5 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors md:flex" type="button" aria-controls="panel-sidebar" aria-expanded="true" aria-label="Recolher menu" title="Recolher menu">
+                        <svg class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="m11 17-5-5 5-5m7 10-5-5 5-5"/></svg>
+                    </button>
+                </div>
+            </div>
+            <nav class="flex-1 space-y-1 px-3 py-5 text-sm" aria-label="Navegação do painel">
+                <a href="{% url 'eleicao:painel' %}" title="Visão Geral" class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2.5 {% if request.resolver_match.url_name == 'painel' %}bg-indigo-50 font-semibold text-indigo-800{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 10.5 12 3.75l8.25 6.75v9a.75.75 0 0 1-.75.75h-5.25v-6h-4.5v6H4.5a.75.75 0 0 1-.75-.75v-9Z"/></svg>
+                    <span class="sidebar-label">Visão Geral</span>
+                </a>
+                <a href="{% url 'eleicao:painel_eleicoes' %}" title="Eleições" class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2.5 {% if request.resolver_match.url_name == 'painel_eleicoes' or request.resolver_match.url_name == 'painel_eleicao_detalhes' or request.resolver_match.url_name == 'painel_eleicao_nova' or request.resolver_match.url_name == 'painel_eleicao_editar' %}bg-indigo-50 font-semibold text-indigo-800{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.75" y="5.25" width="16.5" height="15" rx="1.5"/><path stroke-linecap="round" d="M8 3.75v3M16 3.75v3M3.75 9.5h16.5"/></svg>
+                    <span class="sidebar-label">Eleições</span>
+                </a>
+                <a href="{% url 'eleicao:painel_apuracao' %}" title="Apuração" class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2.5 {% if request.resolver_match.url_name == 'painel_apuracao' %}bg-indigo-50 font-semibold text-indigo-800{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 19.5V12m5 7.5V4.5m5 15v-5m5 5V8.25"/></svg>
+                    <span class="sidebar-label">Apuração</span>
+                </a>
+                <a href="{% url 'eleicao:painel_zeresima' %}" title="Zerésima" class="sidebar-link flex items-center gap-3 rounded-lg px-3 py-2.5 {% if request.resolver_match.url_name == 'painel_zeresima' %}bg-indigo-50 font-semibold text-indigo-800{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M7.5 3.75h6l4.5 4.5v12a.75.75 0 0 1-.75.75h-12a.75.75 0 0 1-.75-.75v-15a1.5 1.5 0 0 1 1.5-1.5Z"/><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 3.75v4.5H18M8.25 13.5h7.5M8.25 16.5h7.5"/></svg>
+                    <span class="sidebar-label">Zerésima</span>
+                </a>
+            </nav>
+            <div class="sidebar-footer mt-auto flex items-center gap-2 border-t border-slate-100 px-3 pb-3 pt-3">
+                <div class="sidebar-profile flex min-w-0 flex-1 items-center gap-3 rounded-lg px-2 py-2" title="{{ request.user.email|default:request.user.username }}">
+                    <span class="sidebar-profile-avatar flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold uppercase text-indigo-800" aria-hidden="true">
+                        {% if request.user.first_name and request.user.last_name %}{{ request.user.first_name|first|upper }}{{ request.user.last_name|first|upper }}{% else %}{{ request.user.username|first|upper }}{{ request.user.username|slice:"1:2"|upper }}{% endif %}
+                    </span>
+                    <span class="sidebar-profile-copy min-w-0">
+                        <span class="block text-[10px] font-semibold uppercase tracking-wide text-slate-400">Logado como</span>
+                        <span class="block truncate text-xs font-medium text-slate-700">{{ request.user.email|default:request.user.username }}</span>
+                    </span>
+                </div>
+                <form method="post" action="{% url 'eleicao:painel_logout' %}">
+                {% csrf_token %}
+                <button class="sidebar-logout flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-slate-600 hover:bg-rose-50 hover:text-rose-700" type="submit" title="Sair" aria-label="Sair">
+                    <svg class="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 7.5V5.25A1.5 1.5 0 0 1 12 3.75h6.75a1.5 1.5 0 0 1 1.5 1.5v13.5a1.5 1.5 0 0 1-1.5 1.5H12a1.5 1.5 0 0 1-1.5-1.5V16.5M15 12H3.75m0 0 3.75-3.75M3.75 12l3.75 3.75"/></svg>
+                </button>
+                </form>
+            </div>
+        </aside>
+    {% endif %}
+    <div id="panel-layout" class="{% if request.user.is_authenticated and request.user.is_staff %}min-h-screen md:ml-64{% else %}min-h-screen{% endif %}">
+        {% block site_header %}
+        <header class="no-print sticky top-0 z-20 border-b border-slate-200 bg-white">
+            <div class="flex min-h-24 flex-col justify-center gap-3 px-4 py-4 sm:px-6 md:min-h-28 md:flex-row md:items-center md:justify-between lg:px-10">
+                <div class="flex min-w-0 flex-1 items-center gap-3">
+                    {% if request.user.is_authenticated and request.user.is_staff %}
+                        <button id="mobile-sidebar-toggle" class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900 md:hidden" type="button" aria-controls="panel-sidebar" aria-expanded="false" aria-label="Abrir menu" title="Abrir menu">
+                            <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                        </button>
+                    {% endif %}
+                    <div class="flex min-w-0 flex-1 items-center gap-4">
+                        {% block page_back %}{% endblock %}
+                        <div class="flex min-w-0 flex-col">
+                            {% block page_header %}
+                                {% if request.user.is_authenticated and request.user.is_staff %}
+                                    <p class="text-sm font-semibold text-slate-700">Painel da Comissão Eleitoral</p>
+                                {% else %}
+                                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Área da comissão</p>
+                                    <a class="mt-1 block text-sm font-semibold" href="{% url 'eleicao:inicio' %}">e-Votos — Sistema Eleitoral</a>
+                                {% endif %}
+                            {% endblock %}
+                        </div>
+                    </div>
+                </div>
+                <div class="flex w-full flex-wrap items-center gap-2 md:w-auto md:justify-end">
+                    {% block page_actions %}{% endblock %}
+                </div>
+            </div>
+        </header>
+        {% endblock %}
+        <main class="{% block main_class %}{% if request.user.is_authenticated and request.user.is_staff %}px-4 py-6 sm:px-6 lg:px-10{% else %}mx-auto flex min-h-[calc(100vh-73px)] max-w-5xl items-center justify-center px-6 py-10{% endif %}{% endblock %}">
+            <div class="w-full">
+                {% if request.user.is_authenticated and request.user.is_staff %}
+                    <div class="no-print mb-5">{% block breadcrumbs %}{% endblock %}</div>
+                {% endif %}
+                {% for message in messages %}
+                    <div class="no-print mb-5 rounded-lg border px-4 py-3 text-sm {% if message.tags == 'error' %}border-rose-200 bg-rose-50 text-rose-800{% elif message.tags == 'warning' %}border-amber-200 bg-amber-50 text-amber-900{% elif message.tags == 'info' %}border-blue-200 bg-blue-50 text-blue-900{% else %}border-emerald-200 bg-emerald-50 text-emerald-800{% endif %}" role="status">{{ message }}</div>
+                {% endfor %}
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+    {% if request.user.is_authenticated and request.user.is_staff %}
+        <script>
+            const sidebarToggle = document.getElementById("sidebar-toggle");
+            const sidebarStateKey = "painel-sidebar-state";
+            const mobileSidebar = document.getElementById("panel-sidebar");
+            const mobileSidebarToggle = document.getElementById("mobile-sidebar-toggle");
+            const mobileSidebarClose = document.getElementById("mobile-sidebar-close");
+            const mobileSidebarBackdrop = document.getElementById("mobile-sidebar-backdrop");
+
+            function setMobileSidebarOpen(open, restoreFocus = true) {
+                mobileSidebar.classList.toggle("hidden", !open);
+                mobileSidebarBackdrop.classList.toggle("hidden", !open);
+                mobileSidebarToggle.setAttribute("aria-expanded", String(open));
+                mobileSidebarToggle.setAttribute("aria-label", open ? "Fechar menu" : "Abrir menu");
+                mobileSidebarToggle.title = open ? "Fechar menu" : "Abrir menu";
+                document.body.classList.toggle("overflow-hidden", open);
+
+                if (open) {
+                    mobileSidebarClose.focus();
+                } else if (restoreFocus) {
+                    mobileSidebarToggle.focus();
+                }
+            }
+
+            function updateSidebarToggle() {
+                const collapsed = document.documentElement.classList.contains("sidebar-collapsed");
+                sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+                sidebarToggle.setAttribute("aria-label", collapsed ? "Expandir menu" : "Recolher menu");
+                sidebarToggle.title = collapsed ? "Expandir menu" : "Recolher menu";
+            }
+            sidebarToggle.addEventListener("click", () => {
+                const collapsed = document.documentElement.classList.toggle("sidebar-collapsed");
+                localStorage.setItem(sidebarStateKey, collapsed ? "collapsed" : "expanded");
+                updateSidebarToggle();
+            });
+            mobileSidebarToggle.addEventListener("click", () => {
+                const isOpen = mobileSidebarToggle.getAttribute("aria-expanded") === "true";
+                setMobileSidebarOpen(!isOpen);
+            });
+            mobileSidebarClose.addEventListener("click", () => setMobileSidebarOpen(false));
+            mobileSidebarBackdrop.addEventListener("click", () => setMobileSidebarOpen(false));
+            mobileSidebar.querySelectorAll("nav a").forEach((link) => {
+                link.addEventListener("click", () => setMobileSidebarOpen(false, false));
+            });
+            document.addEventListener("keydown", (event) => {
+                if (event.key === "Escape" && mobileSidebarToggle.getAttribute("aria-expanded") === "true") {
+                    setMobileSidebarOpen(false);
+                }
+            });
+            window.matchMedia("(min-width: 768px)").addEventListener("change", (event) => {
+                if (event.matches && mobileSidebarToggle.getAttribute("aria-expanded") === "true") {
+                    setMobileSidebarOpen(false, false);
+                }
+            });
+            updateSidebarToggle();
+        </script>
+    {% endif %}
+</body>
+</html>

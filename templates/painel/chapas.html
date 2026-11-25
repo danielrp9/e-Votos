@@ -1,0 +1,82 @@
+{% extends "painel/base_painel.html" %}
+{% block title %}Chapas{% endblock %}
+{% block breadcrumbs %}
+    <nav aria-label="Breadcrumb" class="text-xs text-slate-500">
+        <ol class="flex flex-wrap items-center gap-2">
+            <li><a href="{% url 'eleicao:painel' %}" class="hover:text-indigo-700">Visão Geral</a></li>
+            <li aria-hidden="true">&gt;</li>
+            <li><a href="{% url 'eleicao:painel_eleicoes' %}" class="hover:text-indigo-700">Eleições</a></li>
+            {% if eleicao_selecionada %}
+                <li aria-hidden="true">&gt;</li>
+                <li><a href="{% url 'eleicao:painel_eleicao_detalhes' eleicao_selecionada.pk %}" class="max-w-48 truncate hover:text-indigo-700">{{ eleicao_selecionada.titulo }}</a></li>
+            {% endif %}
+            <li aria-hidden="true">&gt;</li>
+            <li aria-current="page" class="font-medium text-slate-700">Chapas</li>
+        </ol>
+    </nav>
+{% endblock %}
+{% block page_back %}
+    <a href="{% if eleicao_selecionada %}{% url 'eleicao:painel_eleicao_detalhes' eleicao_selecionada.pk %}{% else %}{% url 'eleicao:painel_eleicoes' %}{% endif %}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900" aria-label="Voltar" title="Voltar">
+        <svg class="h-4 w-4 stroke-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m15 19-7-7 7-7"/>
+        </svg>
+    </a>
+{% endblock %}
+{% block page_header %}
+    <h1 class="text-2xl font-semibold sm:text-3xl">{% if eleicao_selecionada %}Chapas · {{ eleicao_selecionada.titulo }}{% else %}Chapas{% endif %}</h1>
+    <p class="mt-1 text-sm text-slate-500">Consulte as chapas vinculadas a uma eleição.</p>
+{% endblock %}
+{% block content %}
+<form method="get" class="mb-5 flex w-full flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
+    <label class="min-w-64 flex-1 text-sm font-medium" for="filtro-eleicao">
+        Filtrar por eleição
+        <select id="filtro-eleicao" name="eleicao" class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
+            <option value="">Todas as eleições</option>
+            {% for opcao in eleicoes %}
+                <option value="{{ opcao.pk }}" {% if eleicao_selecionada.pk == opcao.pk %}selected{% endif %}>{{ opcao.titulo }}</option>
+            {% endfor %}
+        </select>
+    </label>
+    <button class="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800" type="submit">Filtrar</button>
+    {% if eleicao_selecionada %}<a href="{% url 'eleicao:painel_chapas' %}" class="px-2 py-2 text-sm font-semibold text-slate-600 hover:text-slate-900">Limpar</a>{% endif %}
+</form>
+{% if eleicao_selecionada.status_atual == "AGENDADA" %}
+    <div class="mb-5 flex justify-end">
+        <a href="{% url 'eleicao:painel_chapa_nova' %}?eleicao={{ eleicao_selecionada.pk }}" class="rounded-lg bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-800">Cadastrar chapa</a>
+    </div>
+{% endif %}
+<section class="grid gap-4 lg:grid-cols-2" aria-label="Chapas cadastradas">
+    {% for chapa in chapas %}
+        <article class="flex items-start gap-4 rounded-lg border border-slate-200 bg-white p-5">
+            {% if chapa.foto %}
+                <img src="{{ chapa.foto.url }}" alt="" class="h-16 w-16 shrink-0 rounded-lg object-cover">
+            {% else %}
+                <div class="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-xl font-semibold text-indigo-800">{{ chapa.numero }}</div>
+            {% endif %}
+            <div class="min-w-0 flex-1">
+                <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">{{ chapa.eleicao.titulo }}</p>
+                <h2 class="mt-1 text-lg font-semibold">{{ chapa.nome }}</h2>
+                {% if chapa.slogan %}<p class="mt-1 text-sm text-slate-600">{{ chapa.slogan }}</p>{% endif %}
+            </div>
+            {% if chapa.eleicao.status_atual == "AGENDADA" %}
+                <a href="{% url 'eleicao:painel_chapa_editar' chapa.pk %}?eleicao={{ chapa.eleicao_id }}" class="shrink-0 text-sm font-semibold text-indigo-700 hover:text-indigo-900">Editar</a>
+            {% else %}
+                <span class="shrink-0 text-xs font-medium text-slate-500">Imutável</span>
+            {% endif %}
+        </article>
+    {% empty %}
+        <div class="rounded-lg border border-dashed border-slate-300 bg-white px-6 py-12 text-center lg:col-span-2">
+            {% if eleicao_selecionada %}
+                <p class="font-semibold">Nenhuma chapa cadastrada</p>
+                <p class="mt-1 text-sm text-slate-500">Esta lista pertence somente a {{ eleicao_selecionada.titulo }}.</p>
+                {% if eleicao_selecionada.status_atual == "AGENDADA" %}
+                    <a href="{% url 'eleicao:painel_chapa_nova' %}?eleicao={{ eleicao_selecionada.pk }}" class="mt-4 inline-flex rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800">Nova Chapa</a>
+                {% endif %}
+            {% else %}
+                <p class="font-semibold">Selecione uma eleição</p>
+                <p class="mt-1 text-sm text-slate-500">Escolha uma eleição acima para consultar as chapas associadas.</p>
+            {% endif %}
+        </div>
+    {% endfor %}
+</section>
+{% endblock %}

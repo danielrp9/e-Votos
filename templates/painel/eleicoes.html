@@ -1,0 +1,109 @@
+{% extends "painel/base_painel.html" %}
+{% block title %}Eleições{% endblock %}
+{% block breadcrumbs %}
+    <nav aria-label="Breadcrumb" class="text-xs text-slate-500">
+        <ol class="flex flex-wrap items-center gap-2">
+            <li><a href="{% url 'eleicao:painel' %}" class="hover:text-indigo-700">Visão Geral</a></li>
+            <li aria-hidden="true">&gt;</li>
+            <li aria-current="page" class="font-medium text-slate-700">Eleições</li>
+        </ol>
+    </nav>
+{% endblock %}
+{% block page_back %}
+    <a href="{% url 'eleicao:painel' %}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900" aria-label="Voltar" title="Voltar">
+        <svg class="h-4 w-4 stroke-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m15 19-7-7 7-7"/>
+        </svg>
+    </a>
+{% endblock %}
+{% block page_header %}
+    <h1 class="text-2xl font-semibold sm:text-3xl">Eleições</h1>
+    <p class="mt-1 text-sm text-slate-500">Consulte e gerencie as eleições cadastradas.</p>
+{% endblock %}
+{% block page_actions %}
+    <a href="{% url 'eleicao:painel_eleicao_nova' %}" class="w-full rounded-lg bg-indigo-700 px-4 py-2.5 text-center text-sm font-semibold text-white hover:bg-indigo-800 sm:w-auto">Nova Eleição</a>
+{% endblock %}
+{% block content %}
+{% if eleicao_destaque %}
+    <section aria-label="Eleição em andamento">
+        <h2 class="mb-3 text-lg font-semibold">Eleição ativa</h2>
+        <article class="flex flex-wrap items-center justify-between gap-4 rounded-lg border border-indigo-300 border-l-4 bg-indigo-50 p-5 shadow-sm">
+            <div class="min-w-0">
+                <p class="text-xs font-bold uppercase tracking-wide text-indigo-700">Em andamento</p>
+                <h3 class="mt-1 text-xl font-semibold">{{ eleicao_destaque.titulo }}</h3>
+                <p class="mt-1 text-sm text-slate-600">{{ eleicao_destaque.data_inicio|date:"d/m/Y H:i" }} – {{ eleicao_destaque.data_fim|date:"d/m/Y H:i" }}</p>
+            </div>
+            <a href="{% url 'eleicao:painel_eleicao_detalhes' eleicao_destaque.pk %}" class="rounded-lg bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-800">Gerenciar</a>
+        </article>
+    </section>
+{% else %}
+    <section class="rounded-lg border border-dashed border-slate-300 bg-white p-5" aria-label="Eleição em andamento">
+        <h2 class="font-semibold">Nenhuma eleição em andamento</h2>
+        <p class="mt-1 text-sm text-slate-500">A eleição ativa aparecerá em destaque durante o período de votação.</p>
+    </section>
+{% endif %}
+
+{% if outras_abertas %}
+    <section class="mt-7" aria-label="Outras eleições abertas">
+        <h2 class="mb-3 text-lg font-semibold">Outras eleições abertas</h2>
+        <div class="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+            {% for eleicao in outras_abertas %}
+                <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                    <div>
+                        <h3 class="font-semibold">{{ eleicao.titulo }}</h3>
+                        <p class="mt-1 text-xs text-slate-500">{{ eleicao.data_inicio|date:"d/m/Y H:i" }} – {{ eleicao.data_fim|date:"d/m/Y H:i" }}</p>
+                    </div>
+                    <a href="{% url 'eleicao:painel_eleicao_detalhes' eleicao.pk %}" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Ver</a>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+{% endif %}
+
+<section class="mt-7" aria-label="Eleições agendadas">
+    <h2 class="mb-3 text-lg font-semibold">Eleições agendadas</h2>
+    <div class="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white">
+        {% for eleicao in eleicoes_agendadas %}
+            <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                <div>
+                    <h3 class="font-semibold">{{ eleicao.titulo }}</h3>
+                    <p class="mt-1 text-xs text-slate-500">{{ eleicao.data_inicio|date:"d/m/Y H:i" }} – {{ eleicao.data_fim|date:"d/m/Y H:i" }}</p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <a href="{% url 'eleicao:painel_eleicao_detalhes' eleicao.pk %}" class="rounded-lg bg-indigo-700 px-3 py-2 text-sm font-semibold text-white hover:bg-indigo-800">Gerenciar</a>
+                    <a href="{% url 'eleicao:painel_eleicao_editar' eleicao.pk %}" class="text-sm font-semibold text-slate-600 hover:text-slate-900">Editar</a>
+                </div>
+            </div>
+        {% empty %}
+            <p class="px-5 py-4 text-sm text-slate-500">Nenhuma eleição agendada.</p>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="mt-7" aria-label="Eleições encerradas">
+    <h2 class="mb-3 text-lg font-semibold">Eleições encerradas</h2>
+    <details class="rounded-lg border border-slate-200 bg-white">
+        <summary class="cursor-pointer list-none px-5 py-4 text-sm font-semibold text-slate-700">
+            Consultar eleições encerradas ({{ eleicoes_encerradas|length }})
+        </summary>
+        <div class="divide-y divide-slate-200 border-t border-slate-200">
+            {% for eleicao in eleicoes_encerradas %}
+                <div class="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+                    <div>
+                        <h3 class="font-medium text-slate-700">{{ eleicao.titulo }}</h3>
+                        <p class="mt-1 text-xs text-slate-500">{{ eleicao.data_inicio|date:"d/m/Y H:i" }} – {{ eleicao.data_fim|date:"d/m/Y H:i" }}</p>
+                    </div>
+                    <a href="{% url 'eleicao:painel_eleicao_detalhes' eleicao.pk %}" class="inline-flex items-center gap-2 rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-50">
+                        Ver
+                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 12h14m-7-7 7 7-7 7"/>
+                        </svg>
+                    </a>
+                </div>
+            {% empty %}
+                <p class="px-5 py-4 text-sm text-slate-500">Nenhuma eleição encerrada.</p>
+            {% endfor %}
+        </div>
+    </details>
+</section>
+{% endblock %}

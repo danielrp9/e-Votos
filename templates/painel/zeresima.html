@@ -1,0 +1,174 @@
+{% extends "painel/base_painel.html" %}
+{% block title %}Zerésima{% endblock %}
+{% block breadcrumbs %}
+    <nav aria-label="Breadcrumb" class="text-xs text-slate-500">
+        <ol class="flex flex-wrap items-center gap-2">
+            <li><a href="{% url 'eleicao:painel' %}" class="hover:text-indigo-700">Visão Geral</a></li>
+            {% if eleicao %}
+                <li aria-hidden="true">&gt;</li>
+                <li><a href="{% url 'eleicao:painel_eleicoes' %}" class="hover:text-indigo-700">Eleições</a></li>
+                <li aria-hidden="true">&gt;</li>
+                <li><a href="{% url 'eleicao:painel_eleicao_detalhes' eleicao.pk %}" class="max-w-48 truncate hover:text-indigo-700">{{ eleicao.titulo }}</a></li>
+            {% endif %}
+            <li aria-hidden="true">&gt;</li>
+            <li aria-current="page" class="font-medium text-slate-700">Zerésima</li>
+        </ol>
+    </nav>
+{% endblock %}
+{% block page_back %}
+    <a href="{% if eleicao %}{% url 'eleicao:painel_eleicao_detalhes' eleicao.pk %}{% else %}{% url 'eleicao:painel' %}{% endif %}" class="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-600 transition-colors hover:bg-slate-50 hover:text-slate-900" aria-label="Voltar" title="Voltar">
+        <svg class="h-4 w-4 stroke-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="m15 19-7-7 7-7"/>
+        </svg>
+    </a>
+{% endblock %}
+{% block page_header %}
+    <h1 class="text-2xl font-semibold sm:text-3xl">Zerésima</h1>
+    <p class="mt-1 text-sm text-slate-500">Emita o registro inicial da urna antes da votação.</p>
+{% endblock %}
+{% block page_actions %}
+    {% if eleicao %}
+        <button class="no-print w-full rounded-lg bg-indigo-700 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-800 sm:w-auto" onclick="window.print()" type="button">Imprimir</button>
+    {% endif %}
+{% endblock %}
+{% block content %}
+    <div class="space-y-6">
+        <form method="get" class="no-print flex w-full flex-wrap items-end gap-3 rounded-lg border border-slate-200 bg-white p-4">
+            <label class="min-w-64 flex-1 text-sm font-medium" for="zeresima-eleicao">
+                Eleição
+                <select id="zeresima-eleicao" name="eleicao" required class="mt-1 block w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">
+                    <option value="">Selecione uma eleição</option>
+                    {% for opcao in eleicoes %}
+                        <option value="{{ opcao.pk }}" {% if eleicao.pk == opcao.pk %}selected{% endif %}>{{ opcao.titulo }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button class="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800" type="submit">Gerar zerésima</button>
+        </form>
+
+        {% if eleicao %}
+            <article class="print-sheet space-y-6">
+                <header class="print-card rounded-lg border border-slate-200 bg-white p-6">
+                    <p class="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">Comissão Eleitoral</p>
+                    <h2 class="mt-2 text-2xl font-semibold">Zerésima da Urna</h2>
+                    <p class="mt-1 text-lg font-medium text-slate-700">{{ eleicao.titulo }}</p>
+                    <dl class="mt-5 grid gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                        <div>
+                            <dt class="font-semibold text-slate-500">Período oficial</dt>
+                            <dd class="mt-1">{{ eleicao.data_inicio|date:"d/m/Y H:i" }} – {{ eleicao.data_fim|date:"d/m/Y H:i" }}</dd>
+                        </div>
+                        <div>
+                            <dt class="font-semibold text-slate-500">Status</dt>
+                            <dd class="mt-1">{{ eleicao.status_atual }}</dd>
+                        </div>
+                        <div>
+                            <dt class="font-semibold text-slate-500">Emitido em</dt>
+                            <dd class="mt-1">{{ data_emissao|date:"d/m/Y H:i" }}</dd>
+                        </div>
+                        <div>
+                            <dt class="font-semibold text-slate-500">Documento</dt>
+                            <dd class="mt-1">Registro inicial da urna</dd>
+                        </div>
+                    </dl>
+                </header>
+
+                <section class="print-card rounded-lg border border-slate-200 bg-white p-6" aria-labelledby="zeresima-resumo">
+                    <h3 id="zeresima-resumo" class="text-lg font-semibold">Resumo / Totalização</h3>
+                    <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <p class="text-sm text-slate-500">Eleitores aptos</p>
+                            <p class="mt-2 text-2xl font-semibold">{{ total_eleitores }}</p>
+                        </div>
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <p class="text-sm text-slate-500">Chapas homologadas</p>
+                            <p class="mt-2 text-2xl font-semibold">{{ chapas|length }}</p>
+                        </div>
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <p class="text-sm text-slate-500">Votos registrados</p>
+                            <p class="mt-2 text-2xl font-semibold">{{ total_votos }}</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="print-card rounded-lg border border-slate-200 bg-white p-6" aria-labelledby="zeresima-chapas">
+                    <h3 id="zeresima-chapas" class="text-lg font-semibold">Chapas Homologadas</h3>
+                    <div class="print-table-wrap mt-4 overflow-x-auto">
+                        <table class="print-table w-full table-fixed border-collapse text-left text-sm">
+                            <colgroup>
+                                <col class="w-[14%]">
+                                <col class="w-[46%]">
+                                <col class="w-[20%]">
+                                <col class="w-[20%]">
+                            </colgroup>
+                            <thead>
+                                <tr class="border-b-2 border-slate-300 text-xs uppercase tracking-wide text-slate-500">
+                                    <th scope="col" class="px-3 py-3">Número</th>
+                                    <th scope="col" class="px-3 py-3">Chapa</th>
+                                    <th scope="col" class="px-3 py-3 text-right">Votos</th>
+                                    <th scope="col" class="px-3 py-3 text-right">Percentual</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for chapa in chapas %}
+                                    <tr class="border-b border-slate-200">
+                                        <td class="whitespace-nowrap px-3 py-3">{{ chapa.numero }}</td>
+                                        <td class="break-words px-3 py-3">{{ chapa.nome }}</td>
+                                        <td class="whitespace-nowrap px-3 py-3 text-right">{% if total_votos %}—{% else %}0{% endif %}</td>
+                                        <td class="whitespace-nowrap px-3 py-3 text-right">{% if total_votos %}—{% else %}0,00%{% endif %}</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr><td colspan="4" class="px-3 py-4 text-sm text-slate-500">Nenhuma chapa cadastrada para esta eleição.</td></tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section class="print-card rounded-lg border border-slate-200 bg-white p-6" aria-labelledby="zeresima-integridade">
+                    <h3 id="zeresima-integridade" class="text-lg font-semibold">Conferência de Integridade &amp; Boletim de Urna</h3>
+                    <div class="mt-4 grid gap-4 sm:grid-cols-[1fr_auto_1fr] sm:items-center">
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <p class="text-sm text-slate-500">Total de Votos</p>
+                            <p class="mt-1 text-xl font-semibold">{{ total_votos }}</p>
+                        </div>
+                        <p class="text-center text-lg font-bold text-slate-500" aria-label="igual a">==</p>
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <p class="text-sm text-slate-500">Total de Votantes</p>
+                            <p class="mt-1 text-xl font-semibold">{{ total_eleitores_que_votaram }}</p>
+                        </div>
+                    </div>
+                    {% if total_votos or total_eleitores_que_votaram %}
+                        <div class="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" role="alert">
+                            <p class="font-bold">Atenção: a urna já foi iniciada.</p>
+                            <p class="mt-1">Há {{ total_votos }} voto(s) registrado(s) e {{ total_eleitores_que_votaram }} eleitor(es) com comparecimento. Este documento não certifica uma urna zerada.</p>
+                        </div>
+                    {% else %}
+                        <div class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">
+                            <p class="font-semibold">Conferência validada: Total de Votos == Total de Votantes (0 == 0).</p>
+                            <p class="mt-1">Os comprovantes do Boletim de Urna serão emitidos após o encerramento da eleição.</p>
+                        </div>
+                    {% endif %}
+                </section>
+
+                <section class="print-card rounded-lg border border-slate-200 bg-white p-6" aria-labelledby="zeresima-assinaturas">
+                    <h3 id="zeresima-assinaturas" class="text-lg font-semibold">Quadro de Assinaturas</h3>
+                    <div class="mt-6 grid grid-cols-1 gap-8">
+                        <div class="space-y-5">
+                            <h4 class="font-semibold">Membros da Comissão Eleitoral</h4>
+                            {% for membro in membros_comissao %}
+                                <div class="print-signature">
+                                    <div class="h-8 border-b border-slate-400"></div>
+                                    <p class="mt-2 text-sm">{{ membro }} — assinatura</p>
+                                </div>
+                            {% empty %}
+                                <p class="text-sm text-amber-800">Nenhum membro informado. Cadastre os nomes na edição da eleição.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </section>
+            </article>
+        {% elif not eleicoes %}
+            <p class="rounded-lg border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">Cadastre uma eleição antes de emitir a zerésima.</p>
+        {% endif %}
+    </div>
+{% endblock %}

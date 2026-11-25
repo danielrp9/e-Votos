@@ -1,0 +1,166 @@
+{% extends "eleicao/base.html" %}
+{% block title %}Auditoria Pública{% endblock %}
+{% block main_class %}mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8{% endblock %}
+{% block content %}
+<div class="space-y-6">
+    <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+        <h1 class="text-3xl font-semibold">Auditoria Pública</h1>
+        <p class="mt-2 text-sm leading-6 text-slate-600">Consulte boletins de eleições encerradas e confira o hash SHA-256 ou um código de comprovante. Nenhum dado pessoal de eleitor é exibido.</p>
+    </section>
+
+    {% if eleicao %}
+        <a href="{% url 'eleicao:auditoria_publica' %}" class="inline-flex items-center gap-2 text-sm font-semibold text-indigo-700 hover:text-indigo-900">
+            <span aria-hidden="true">←</span> Todas as eleições encerradas
+        </a>
+        <section class="space-y-6 rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <header>
+                <h2 class="text-2xl font-semibold">{{ eleicao.titulo }}</h2>
+                <p class="mt-1 text-sm text-slate-500">Boletim oficial de urna · {{ eleicao.data_inicio|date:"d/m/Y H:i" }} – {{ eleicao.data_fim|date:"d/m/Y H:i" }}</p>
+            </header>
+
+            {% if aviso_status %}
+                <div class="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900" role="status">
+                    {{ aviso_status }}
+                </div>
+            {% else %}
+                <section aria-labelledby="auditoria-resumo">
+                    <h3 id="auditoria-resumo" class="text-lg font-semibold">Resumo de comparecimento e totalização</h3>
+                    <dl class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <dt class="text-sm text-slate-500">Total de Eleitores Aptos</dt>
+                            <dd class="mt-1 text-xl font-semibold">{{ dados_boletim.total_eleitores_aptos }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <dt class="text-sm text-slate-500">Comparecimento</dt>
+                            <dd class="mt-1 text-xl font-semibold">{{ dados_boletim.comparecimento }}</dd>
+                            <dd class="text-sm text-slate-500">{{ dados_boletim.percentual_comparecimento|floatformat:2 }}%</dd>
+                        </div>
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <dt class="text-sm text-slate-500">Abstenções</dt>
+                            <dd class="mt-1 text-xl font-semibold">{{ dados_boletim.abstencoes }}</dd>
+                            <dd class="text-sm text-slate-500">{{ dados_boletim.percentual_abstencoes|floatformat:2 }}%</dd>
+                        </div>
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <dt class="text-sm text-slate-500">Total de votos</dt>
+                            <dd class="mt-1 text-xl font-semibold">{{ dados_boletim.total_votos }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <dt class="text-sm text-slate-500">Total de Votos Válidos</dt>
+                            <dd class="mt-1 text-xl font-semibold">{{ dados_boletim.total_votos_validos }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <dt class="text-sm text-slate-500">Votos Brancos</dt>
+                            <dd class="mt-1 text-xl font-semibold">{{ dados_boletim.votos_brancos }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
+                            <dt class="text-sm text-slate-500">Votos Nulos</dt>
+                            <dd class="mt-1 text-xl font-semibold">{{ dados_boletim.votos_nulos }}</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                <section aria-labelledby="auditoria-resultado">
+                    <h3 id="auditoria-resultado" class="text-lg font-semibold">Resultado oficial por chapa</h3>
+                    {% if dados_boletim.integridade_ok %}
+                        <div class="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+                            <table class="w-full border-collapse text-left text-sm">
+                                <thead>
+                                    <tr class="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+                                        <th scope="col" class="px-4 py-3">Número</th>
+                                        <th scope="col" class="px-4 py-3">Chapa</th>
+                                        <th scope="col" class="px-4 py-3 text-right">Votos</th>
+                                        <th scope="col" class="px-4 py-3 text-right">Percentual</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for chapa in dados_boletim.resultados %}
+                                        <tr class="border-b border-slate-100 last:border-0 {% if chapa.vencedora %}bg-emerald-50 font-semibold{% endif %}">
+                                            <td class="px-4 py-3">{{ chapa.numero }}</td>
+                                            <td class="px-4 py-3">{{ chapa.nome }}{% if chapa.vencedora %} <span class="text-emerald-800">(Vencedora)</span>{% endif %}</td>
+                                            <td class="px-4 py-3 text-right">{{ chapa.total_votos }}</td>
+                                            <td class="px-4 py-3 text-right">{{ chapa.percentual|floatformat:2 }}%</td>
+                                        </tr>
+                                    {% empty %}
+                                        <tr><td colspan="4" class="px-4 py-3 text-slate-500">Nenhuma chapa cadastrada.</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="mt-3 rounded-lg border border-rose-200 bg-rose-50 p-4 text-sm text-rose-900" role="alert">Os totais de votos e comparecimento divergem. A apuração por chapa está suspensa para conferência.</p>
+                    {% endif %}
+                </section>
+
+                <section class="rounded-lg border border-indigo-200 bg-indigo-50 p-4" aria-labelledby="auditoria-hash">
+                    <h3 id="auditoria-hash" class="text-sm font-semibold text-slate-800">Hash SHA-256 do Boletim de Urna</h3>
+                    <p class="mt-2 break-all font-mono text-xs text-slate-700">{{ dados_boletim.assinatura_digital }}</p>
+                </section>
+
+                <section class="rounded-lg border border-slate-200 p-4" aria-labelledby="auditoria-verificar">
+                    <h3 id="auditoria-verificar" class="font-semibold">Verificar hash ou comprovante</h3>
+                    <form method="get" action="{% url 'eleicao:auditoria_eleicao' eleicao.pk %}" class="mt-3 flex flex-col gap-2 sm:flex-row">
+                        <label class="sr-only" for="auditoria-busca">Hash SHA-256 ou código do comprovante</label>
+                        <input id="auditoria-busca" name="verificar" value="{{ request.GET.verificar }}" autocomplete="off" class="min-w-0 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" placeholder="Cole o hash ou código do recibo">
+                        <button class="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800" type="submit">Verificar</button>
+                    </form>
+                    {% if verificacao %}
+                        <p class="mt-3 rounded-lg border p-3 text-sm {% if verificacao.valida %}border-emerald-200 bg-emerald-50 text-emerald-900{% else %}border-amber-200 bg-amber-50 text-amber-900{% endif %}" role="status">{{ verificacao.mensagem }}</p>
+                    {% endif %}
+                </section>
+
+                <section aria-labelledby="auditoria-comprovantes">
+                    <h3 id="auditoria-comprovantes" class="text-lg font-semibold">Comprovantes registrados (ordem alfabética)</h3>
+                    <ul class="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-6">
+                        {% for codigo in comprovantes %}
+                            <li class="rounded-lg border border-slate-200 bg-slate-50 px-2 py-2 text-center font-mono text-xs">{{ codigo }}</li>
+                        {% empty %}
+                            <li class="col-span-full text-sm text-slate-500">Nenhum comprovante registrado.</li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+        </section>
+    {% else %}
+        <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
+            <h2 class="text-xl font-semibold">Eleições encerradas</h2>
+            {% regroup eleicoes by data_fim.year as eleicoes_por_ano %}
+            <ul class="mt-4 space-y-6">
+                {% for grupo in eleicoes_por_ano %}
+                    <li>
+                        <div class="flex flex-wrap items-baseline justify-between gap-2 border-b border-slate-200 pb-2">
+                            <h3 class="font-semibold text-slate-800">Resumo de {{ grupo.grouper }}</h3>
+                            <span class="text-sm text-slate-500">
+                                {% if grupo.list|length == 1 %}1 eleição encerrada{% else %}{{ grupo.list|length }} eleições encerradas{% endif %}
+                            </span>
+                        </div>
+                        <ul class="divide-y divide-slate-200">
+                            {% for item in grupo.list %}
+                                <li>
+                                    <a href="{% url 'eleicao:auditoria_eleicao' item.pk %}" class="flex items-start justify-between gap-4 py-4 text-slate-800 hover:text-indigo-700">
+                                        <span class="min-w-0">
+                                            <span class="flex flex-wrap items-center gap-2 font-semibold">
+                                                {{ item.titulo }}
+                                                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">Encerrada</span>
+                                            </span>
+                                            {% if item.descricao %}
+                                                <span class="mt-1 block text-sm text-slate-600">{{ item.descricao }}</span>
+                                            {% endif %}
+                                            <span class="mt-2 block text-xs text-slate-500">
+                                                Período: {{ item.data_inicio|date:"d/m/Y H:i" }}–{{ item.data_fim|date:"d/m/Y H:i" }}
+                                                · Encerramento: {{ item.data_fim|date:"d/m/Y H:i" }}
+                                            </span>
+                                        </span>
+                                        <span class="shrink-0 pt-1 text-indigo-700" aria-hidden="true">→</span>
+                                    </a>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+                {% empty %}
+                    <li class="py-4 text-sm text-slate-500">Nenhuma eleição encerrada está disponível para auditoria.</li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+</div>
+{% endblock %}
