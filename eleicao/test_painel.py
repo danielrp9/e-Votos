@@ -143,11 +143,11 @@ class PainelComissaoTests(TestCase):
         self.assertContains(resposta, "restrito à equipe da comissão")
         self.assertNotIn("_auth_user_id", self.client.session)
 
-    def test_home_oculta_cabecalho_publico(self):
+    def test_home_redireciona_para_login_do_painel(self):
         resposta = self.client.get(reverse("eleicao:inicio"))
 
-        self.assertEqual(resposta.status_code, 200)
-        self.assertNotContains(resposta, "Acesso administrativo")
+        self.assertEqual(resposta.status_code, 302)
+        self.assertEqual(resposta["Location"], reverse("eleicao:painel_login"))
 
     def test_breadcrumbs_ficam_no_main_e_voltar_ao_lado_do_titulo(self):
         urls = (

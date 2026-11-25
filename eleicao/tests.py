@@ -141,14 +141,14 @@ class FluxoVotacaoTests(TestCase):
         resposta_invalida = self.client.get(url, {"verificar": "NAO-EXISTE"})
         self.assertContains(resposta_invalida, "não encontrado neste Boletim")
 
-    def test_tela_inicial_oculta_o_cabecalho_publico(self):
+    def test_raiz_redireciona_para_login_do_painel(self):
         resposta = self.client.get(reverse("eleicao:inicio"))
 
-        self.assertEqual(resposta.status_code, 200)
-        self.assertNotContains(resposta, "<header")
-        self.assertNotContains(resposta, "Acesso administrativo")
-        self.assertNotContains(resposta, "Comissão Eleitoral")
-        self.assertContains(resposta, "Sua participação fortalece a comunidade.")
+        self.assertEqual(resposta.status_code, 302)
+        self.assertEqual(
+            resposta["Location"],
+            reverse("eleicao:painel_login"),
+        )
 
     def test_telas_de_votacao_nao_mostram_cabecalho_publico(self):
         url_convite = reverse("eleicao:votar", args=[self.eleitor.token_convite])
@@ -293,7 +293,8 @@ class FluxoVotacaoTests(TestCase):
             {"escolha": f"chapa:{self.chapa.pk}"},
         )
 
-        self.assertRedirects(response, reverse("eleicao:inicio"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response["Location"], reverse("eleicao:inicio"))
         self.assertEqual(Voto.objects.count(), 1)
 
     def test_link_reaberto_apos_voto_pede_matricula_e_mostra_confirmacao(self):

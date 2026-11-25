@@ -190,11 +190,7 @@ def urna(request):
 
 @require_GET
 def inicio(request):
-    agora = timezone.now()
-    eleicoes_abertas = Eleicao.objects.filter(
-        ativa=True, data_inicio__lte=agora, data_fim__gte=agora
-    )
-    return render(request, "eleicao/inicio.html", {"eleicoes_abertas": eleicoes_abertas})
+    return redirect("eleicao:painel_login")
 
 
 @require_GET
