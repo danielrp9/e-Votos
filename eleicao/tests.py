@@ -79,6 +79,10 @@ class FluxoVotacaoTests(TestCase):
 
         self.assertEqual(resposta.status_code, 200)
         self.assertContains(resposta, eleicao_encerrada.titulo)
+        self.assertContains(resposta, "Como garantimos o sigilo e a integridade do voto")
+        self.assertContains(resposta, "Token Individual de Uso Único")
+        self.assertContains(resposta, "Commit:")
+        self.assertContains(resposta, "https://github.com/danielrp9/e-Votos")
         self.assertNotContains(resposta, self.eleicao.titulo)
 
     def test_auditoria_nao_exibe_resultados_de_eleicao_em_andamento_ou_agendada(self):
@@ -118,6 +122,21 @@ class FluxoVotacaoTests(TestCase):
         resposta = self.client.get(url)
 
         self.assertEqual(resposta.status_code, 200)
+        self.assertContains(
+            resposta,
+            "Cadeia de votos íntegra — Nenhuma inconsistência detectada",
+        )
+        self.assertContains(resposta, "Total de Eleitores Votantes")
+        self.assertContains(resposta, "Total de Cédulas Computadas")
+        self.assertContains(resposta, "Como garantimos o sigilo e a integridade do voto")
+        self.assertContains(resposta, "Token Individual de Uso Único")
+        self.assertContains(resposta, "Desvinculação e Sigilo")
+        self.assertContains(resposta, "Cadeia Criptográfica (SHA-256)")
+        self.assertContains(resposta, "Comprovante Verificável e Código Aberto")
+        self.assertContains(resposta, "Commit:")
+        self.assertEqual(resposta.context["total_eleitores_votantes"], 2)
+        self.assertEqual(resposta.context["total_cedulas_computadas"], 2)
+        self.assertTrue(resposta.context["cadeia_integra"])
         self.assertContains(resposta, "Total de Eleitores Aptos")
         self.assertContains(resposta, "Total de Votos Válidos")
         self.assertContains(resposta, "Hash SHA-256 do Boletim de Urna")
@@ -140,6 +159,37 @@ class FluxoVotacaoTests(TestCase):
 
         resposta_invalida = self.client.get(url, {"verificar": "NAO-EXISTE"})
         self.assertContains(resposta_invalida, "não encontrado neste Boletim")
+
+    def test_auditoria_sinaliza_alteracao_de_cedula_na_cadeia(self):
+        eleicao = self.criar_eleicao_encerrada_para_auditoria()
+        voto = Voto.objects.filter(eleicao=eleicao).first()
+        Voto.objects.filter(pk=voto.pk).update(codigo_comprovante="EDITADO00001")
+
+        resposta = self.client.get(
+            reverse("eleicao:auditoria_eleicao", args=[eleicao.pk])
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(resposta.context["cadeia_integra"])
+        self.assertContains(resposta, "inconsistências detectadas na cadeia de votos")
+        self.assertContains(resposta, "hash de integridade divergente")
+
+    def test_auditoria_sinaliza_divergencia_entre_comparecimento_e_cedulas(self):
+        eleicao = self.criar_eleicao_encerrada_para_auditoria()
+        Voto.objects.filter(eleicao=eleicao).first().delete()
+
+        resposta = self.client.get(
+            reverse("eleicao:auditoria_eleicao", args=[eleicao.pk])
+        )
+
+        self.assertEqual(resposta.status_code, 200)
+        self.assertFalse(resposta.context["cadeia_integra"])
+        self.assertEqual(resposta.context["total_eleitores_votantes"], 2)
+        self.assertEqual(resposta.context["total_cedulas_computadas"], 1)
+        self.assertContains(
+            resposta,
+            "O total de eleitores votantes diverge do total de cédulas computadas.",
+        )
 
     def test_raiz_redireciona_para_login_do_painel(self):
         resposta = self.client.get(reverse("eleicao:inicio"))

@@ -6,6 +6,35 @@
     <section class="rounded-lg border border-slate-200 bg-white p-6 shadow-sm">
         <h1 class="text-3xl font-semibold">Auditoria Pública</h1>
         <p class="mt-2 text-sm leading-6 text-slate-600">Consulte boletins de eleições encerradas e confira o hash SHA-256 ou um código de comprovante. Nenhum dado pessoal de eleitor é exibido.</p>
+        <p class="mt-3 text-sm text-slate-600">
+            Código-fonte aberto:
+            <a class="font-semibold text-indigo-700 underline hover:text-indigo-900" href="{{ commit_url }}" rel="noopener noreferrer" target="_blank">
+                Commit: {{ commit_hash }}
+            </a>
+            · <a class="font-semibold text-indigo-700 underline hover:text-indigo-900" href="{{ repositorio_url }}" rel="noopener noreferrer" target="_blank">Repositório no GitHub</a>
+        </p>
+    </section>
+
+    <section class="rounded-lg border border-indigo-200 bg-indigo-50 p-6" aria-labelledby="auditoria-sigilo">
+        <h2 id="auditoria-sigilo" class="text-xl font-semibold">Como garantimos o sigilo e a integridade do voto</h2>
+        <dl class="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+                <dt class="font-semibold">Token Individual de Uso Único</dt>
+                <dd class="mt-1 text-sm leading-6 text-slate-700">Cada eleitor recebe um link exclusivo, invalidado automaticamente no instante em que o voto é gravado em uma transação atômica.</dd>
+            </div>
+            <div>
+                <dt class="font-semibold">Desvinculação e Sigilo</dt>
+                <dd class="mt-1 text-sm leading-6 text-slate-700">O comparecimento do eleitor é armazenado separadamente da cédula escolhida, sem vínculo que permita identificar em quem a pessoa votou.</dd>
+            </div>
+            <div>
+                <dt class="font-semibold">Cadeia Criptográfica (SHA-256)</dt>
+                <dd class="mt-1 text-sm leading-6 text-slate-700">Cada voto registrado é encadeado criptograficamente ao anterior, permitindo detectar alterações ou remoções nos registros do banco de dados.</dd>
+            </div>
+            <div>
+                <dt class="font-semibold">Comprovante Verificável e Código Aberto</dt>
+                <dd class="mt-1 text-sm leading-6 text-slate-700">O recibo permite conferir a presença do voto na auditoria pública, e todo o <a class="font-semibold text-indigo-700 underline" href="{{ repositorio_url }}" rel="noopener noreferrer" target="_blank">código-fonte está aberto à fiscalização</a>.</dd>
+            </div>
+        </dl>
     </section>
 
     {% if eleicao %}
@@ -23,6 +52,33 @@
                     {{ aviso_status }}
                 </div>
             {% else %}
+                <section class="rounded-lg border p-5 {% if cadeia_integra %}border-emerald-300 bg-emerald-50 text-emerald-950{% else %}border-rose-300 bg-rose-50 text-rose-950{% endif %}" aria-labelledby="auditoria-integridade" role="{% if cadeia_integra %}status{% else %}alert{% endif %}">
+                    <h3 id="auditoria-integridade" class="text-lg font-semibold">
+                        {% if cadeia_integra %}Cadeia de votos íntegra — Nenhuma inconsistência detectada{% else %}Alerta: inconsistências detectadas na cadeia de votos{% endif %}
+                    </h3>
+                    <dl class="mt-4 grid gap-3 sm:grid-cols-2">
+                        <div class="rounded-lg border border-current/20 bg-white/70 p-3">
+                            <dt class="text-sm">Total de Eleitores Votantes</dt>
+                            <dd class="mt-1 text-2xl font-semibold">{{ total_eleitores_votantes }}</dd>
+                        </div>
+                        <div class="rounded-lg border border-current/20 bg-white/70 p-3">
+                            <dt class="text-sm">Total de Cédulas Computadas (válidos + brancos + nulos)</dt>
+                            <dd class="mt-1 text-2xl font-semibold">{{ total_cedulas_computadas }}</dd>
+                        </div>
+                    </dl>
+                    {% if inconsistencias %}
+                        <ul class="mt-3 list-disc space-y-1 pl-5 text-sm">
+                            {% for inconsistencia in inconsistencias %}
+                                <li>{{ inconsistencia }}</li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                    <p class="mt-3 text-sm">
+                        Código-fonte da versão em execução:
+                        <a class="font-semibold underline" href="{{ commit_url }}" rel="noopener noreferrer" target="_blank">Commit: {{ commit_hash }}</a>
+                    </p>
+                </section>
+
                 <section aria-labelledby="auditoria-resumo">
                     <h3 id="auditoria-resumo" class="text-lg font-semibold">Resumo de comparecimento e totalização</h3>
                     <dl class="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -61,7 +117,7 @@
 
                 <section aria-labelledby="auditoria-resultado">
                     <h3 id="auditoria-resultado" class="text-lg font-semibold">Resultado oficial por chapa</h3>
-                    {% if dados_boletim.integridade_ok %}
+                    {% if cadeia_integra %}
                         <div class="mt-3 overflow-x-auto rounded-lg border border-slate-200">
                             <table class="w-full border-collapse text-left text-sm">
                                 <thead>

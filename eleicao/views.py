@@ -1,5 +1,7 @@
+import subprocess
 import uuid
 
+from django.conf import settings
 from django.contrib import messages
 from django.db import transaction
 from django.db.models import Q
@@ -8,11 +10,40 @@ from django.utils import timezone
 from django.views.decorators.http import require_GET, require_http_methods
 
 from .models import Chapa, Eleicao, Eleitor, Voto
-from .services.auditoria_eleicao import obter_dados_boletim
+from .services.auditoria_eleicao import (
+    obter_dados_boletim,
+    verificar_integridade_votos,
+)
 from .services.resultado_eleicao import calcular_resultado_eleicao
 
 
 MAX_TENTATIVAS_MATRICULA = 5
+REPOSITORIO_PUBLICO_URL = "https://github.com/danielrp9/e-Votos"
+
+
+def _obter_identificacao_versao():
+    try:
+        resultado = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=settings.BASE_DIR,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=2,
+        )
+        commit_hash = resultado.stdout.strip() or "indisponível"
+    except (OSError, subprocess.SubprocessError):
+        commit_hash = "indisponível"
+    commit_url = (
+        f"{REPOSITORIO_PUBLICO_URL}/commit/{commit_hash}"
+        if commit_hash != "indisponível"
+        else REPOSITORIO_PUBLICO_URL
+    )
+    return {
+        "commit_hash": commit_hash,
+        "commit_url": commit_url,
+        "repositorio_url": REPOSITORIO_PUBLICO_URL,
+    }
 
 
 def _matricula_normalizada(valor):
@@ -161,6 +192,7 @@ def urna(request):
 
     with transaction.atomic():
         eleitor = Eleitor.objects.select_for_update().select_related("eleicao").get(pk=eleitor_id)
+        Eleicao.objects.select_for_update().get(pk=eleitor.eleicao_id)
         if eleitor.ja_votou:
             request.session.pop("eleitor_id", None)
             request.session.pop("eleicao_id", None)
@@ -195,11 +227,16 @@ def inicio(request):
 
 @require_GET
 def auditoria_publica(request, eleicao_id=None):
+    contexto_versao = _obter_identificacao_versao()
     if eleicao_id is None:
         eleicoes = Eleicao.objects.filter(
             Q(ativa=False) | Q(data_fim__lt=timezone.now())
         ).order_by("-data_fim", "-pk")
-        return render(request, "eleicao/auditoria.html", {"eleicoes": eleicoes})
+        return render(
+            request,
+            "eleicao/auditoria.html",
+            {"eleicoes": eleicoes, **contexto_versao},
+        )
 
     eleicao = get_object_or_404(Eleicao, pk=eleicao_id)
     if eleicao.status_atual != "ENCERRADA":
@@ -211,10 +248,15 @@ def auditoria_publica(request, eleicao_id=None):
         return render(
             request,
             "eleicao/auditoria.html",
-            {"eleicao": eleicao, "aviso_status": aviso_status},
+            {
+                "eleicao": eleicao,
+                "aviso_status": aviso_status,
+                **contexto_versao,
+            },
         )
 
     dados_boletim = obter_dados_boletim(eleicao)
+    integridade = verificar_integridade_votos(eleicao)
     comprovantes = dados_boletim["comprovantes_ordenados"]
     verificacao = None
     if "verificar" in request.GET:
@@ -248,6 +290,8 @@ def auditoria_publica(request, eleicao_id=None):
             "dados_boletim": dados_boletim,
             "comprovantes": comprovantes,
             "verificacao": verificacao,
+            **integridade,
+            **contexto_versao,
         },
     )
 

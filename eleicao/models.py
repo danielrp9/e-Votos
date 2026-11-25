@@ -1,3 +1,5 @@
+import hashlib
+import json
 import secrets
 import string
 import uuid
@@ -213,6 +215,8 @@ class Eleitor(models.Model):
 
 
 class Voto(models.Model):
+    HASH_INICIAL = "0" * 64
+
     class Tipo(models.TextChoices):
         VALIDO = "VALIDO", "Válido"
         BRANCO = "BRANCO", "Branco"
@@ -225,11 +229,39 @@ class Voto(models.Model):
     tipo_voto = models.CharField(max_length=10, choices=Tipo.choices)
     codigo_comprovante = models.CharField(max_length=12, unique=True, editable=False)
     data_registro = models.DateTimeField(default=timezone.now, editable=False)
+    hash_anterior = models.CharField(max_length=64, default="", editable=False)
+    hash_integridade = models.CharField(max_length=64, default="", editable=False)
+
+    def calcular_hash_integridade(self, hash_anterior):
+        conteudo = {
+            "eleicao_id": self.eleicao_id,
+            "chapa_id": self.chapa_id,
+            "tipo_voto": self.tipo_voto,
+            "codigo_comprovante": self.codigo_comprovante,
+            "data_registro": self.data_registro.isoformat(),
+            "hash_anterior": hash_anterior,
+        }
+        serializado = json.dumps(
+            conteudo,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+        return hashlib.sha256(serializado).hexdigest()
 
     def save(self, *args, **kwargs):
         if not self.codigo_comprovante:
             caracteres = string.ascii_uppercase + string.digits
             self.codigo_comprovante = "".join(secrets.choice(caracteres) for _ in range(12))
+        if self._state.adding:
+            self.hash_anterior = (
+                type(self).objects.filter(eleicao_id=self.eleicao_id)
+                .order_by("-pk")
+                .values_list("hash_integridade", flat=True)
+                .first()
+                or self.HASH_INICIAL
+            )
+            self.hash_integridade = self.calcular_hash_integridade(self.hash_anterior)
         super().save(*args, **kwargs)
 
     def __str__(self):

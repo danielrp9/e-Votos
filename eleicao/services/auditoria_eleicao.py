@@ -7,6 +7,45 @@ from eleicao.models import Chapa, Eleitor, Voto
 from eleicao.services.resultado_eleicao import calcular_resultado_eleicao
 
 
+def verificar_integridade_votos(eleicao):
+    votos = Voto.objects.filter(eleicao=eleicao).order_by("pk")
+    total_eleitores_votantes = Eleitor.objects.filter(
+        eleicao=eleicao,
+        ja_votou=True,
+    ).count()
+    total_cedulas_computadas = 0
+    inconsistencias = []
+    hash_anterior_esperado = Voto.HASH_INICIAL
+
+    for indice, voto in enumerate(votos, start=1):
+        if voto.tipo_voto in (Voto.Tipo.VALIDO, Voto.Tipo.BRANCO, Voto.Tipo.NULO):
+            total_cedulas_computadas += 1
+        if voto.hash_anterior != hash_anterior_esperado:
+            inconsistencias.append(
+                f"Cédula {indice}: referência ao hash anterior divergente."
+            )
+        hash_esperado = voto.calcular_hash_integridade(hash_anterior_esperado)
+        if voto.hash_integridade != hash_esperado:
+            inconsistencias.append(f"Cédula {indice}: hash de integridade divergente.")
+        hash_anterior_esperado = hash_esperado
+
+    if total_eleitores_votantes != total_cedulas_computadas:
+        inconsistencias.append(
+            "O total de eleitores votantes diverge do total de cédulas computadas."
+        )
+    if votos.count() != total_cedulas_computadas:
+        inconsistencias.append(
+            "Há registros de voto com tipo inválido, fora dos totais computados."
+        )
+
+    return {
+        "cadeia_integra": not inconsistencias,
+        "inconsistencias": inconsistencias,
+        "total_eleitores_votantes": total_eleitores_votantes,
+        "total_cedulas_computadas": total_cedulas_computadas,
+    }
+
+
 def obter_dados_boletim(eleicao):
     resultado = calcular_resultado_eleicao(eleicao)
     total_eleitores_aptos = Eleitor.objects.filter(eleicao=eleicao).count()
