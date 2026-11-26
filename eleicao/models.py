@@ -75,6 +75,7 @@ class Eleicao(models.Model):
     data_inicio = models.DateTimeField()
     data_fim = models.DateTimeField()
     ativa = models.BooleanField(default=True)
+    criada_em = models.DateTimeField(default=timezone.now, editable=False, null=True)
 
     @property
     def status_atual(self):

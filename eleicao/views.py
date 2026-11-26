@@ -21,6 +21,85 @@ MAX_TENTATIVAS_MATRICULA = 5
 REPOSITORIO_PUBLICO_URL = "https://github.com/danielrp9/e-Votos"
 
 
+def _construir_timeline_eleicao(eleicao):
+    votos = list(
+        Voto.objects.filter(eleicao=eleicao).order_by("pk", "data_registro")
+    )
+    eventos = [
+        {
+            "tipo": "criacao",
+            "titulo": "Criação da eleição",
+            "data_hora": eleicao.criada_em,
+            "referencia": f"Pleito #{eleicao.pk}",
+            "mostrar_por_padrao": True,
+        },
+        {
+            "tipo": "abertura",
+            "titulo": "Abertura da votação · Zerésima",
+            "data_hora": eleicao.data_inicio,
+            "referencia": f"Pleito #{eleicao.pk}",
+            "hash_atual": Voto.HASH_INICIAL,
+            "mostrar_por_padrao": True,
+        },
+    ]
+
+    hash_anterior_esperado = Voto.HASH_INICIAL
+    total_votos = len(votos)
+    for indice, voto in enumerate(votos, start=1):
+        hash_esperado = voto.calcular_hash_integridade(hash_anterior_esperado)
+        elo_integro = (
+            voto.hash_anterior == hash_anterior_esperado
+            and voto.hash_integridade == hash_esperado
+        )
+        eventos.append(
+            {
+                "tipo": "voto",
+                "titulo": f"Cédula #{indice:03d}",
+                "data_hora": voto.data_registro,
+                "hash_anterior": voto.hash_anterior[:8],
+                "hash_atual": voto.hash_integridade[:8],
+                "elo_integro": elo_integro,
+                "mostrar_por_padrao": (
+                    total_votos <= 20 or indice <= 3 or indice > total_votos - 5
+                ),
+            }
+        )
+        hash_anterior_esperado = hash_esperado
+
+    if eleicao.status_atual == "ENCERRADA":
+        total_votantes = Eleitor.objects.filter(
+            eleicao=eleicao,
+            ja_votou=True,
+        ).count()
+        eventos.append(
+            {
+                "tipo": "encerramento",
+                "titulo": "Encerramento da urna",
+                "data_hora": eleicao.data_fim,
+                "total_votantes": total_votantes,
+                "total_cedulas": total_votos,
+                "paridade_confirmada": total_votantes == total_votos,
+                "hash_final": (
+                    votos[-1].hash_integridade[:8]
+                    if votos
+                    else Voto.HASH_INICIAL[:8]
+                ),
+                "mostrar_por_padrao": True,
+            }
+        )
+
+    eventos.sort(
+        key=lambda evento: (
+            evento["data_hora"] is None,
+            evento["data_hora"],
+        )
+    )
+    return eventos, any(
+        evento["tipo"] == "voto" and not evento["mostrar_por_padrao"]
+        for evento in eventos
+    )
+
+
 def _obter_identificacao_versao():
     try:
         resultado = subprocess.run(
@@ -239,6 +318,9 @@ def auditoria_publica(request, eleicao_id=None):
         )
 
     eleicao = get_object_or_404(Eleicao, pk=eleicao_id)
+    timeline_eventos, timeline_tem_elos_ocultos = _construir_timeline_eleicao(
+        eleicao
+    )
     if eleicao.status_atual != "ENCERRADA":
         aviso_status = (
             "A votação ainda está agendada."
@@ -251,6 +333,8 @@ def auditoria_publica(request, eleicao_id=None):
             {
                 "eleicao": eleicao,
                 "aviso_status": aviso_status,
+                "timeline_eventos": timeline_eventos,
+                "timeline_tem_elos_ocultos": timeline_tem_elos_ocultos,
                 **contexto_versao,
             },
         )
@@ -290,6 +374,8 @@ def auditoria_publica(request, eleicao_id=None):
             "dados_boletim": dados_boletim,
             "comprovantes": comprovantes,
             "verificacao": verificacao,
+            "timeline_eventos": timeline_eventos,
+            "timeline_tem_elos_ocultos": timeline_tem_elos_ocultos,
             **integridade,
             **contexto_versao,
         },

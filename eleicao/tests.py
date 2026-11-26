@@ -160,6 +160,83 @@ class FluxoVotacaoTests(TestCase):
         resposta_invalida = self.client.get(url, {"verificar": "NAO-EXISTE"})
         self.assertContains(resposta_invalida, "não encontrado neste Boletim")
 
+    def test_auditoria_exibe_timeline_criptografica_sem_identificar_votos(self):
+        eleicao = self.criar_eleicao_encerrada_para_auditoria()
+        resposta = self.client.get(
+            reverse("eleicao:auditoria_eleicao", args=[eleicao.pk])
+        )
+
+        eventos = resposta.context["timeline_eventos"]
+        criacao = next(evento for evento in eventos if evento["tipo"] == "criacao")
+        abertura = next(evento for evento in eventos if evento["tipo"] == "abertura")
+        eventos_votos = [evento for evento in eventos if evento["tipo"] == "voto"]
+        encerramento = next(
+            evento for evento in eventos if evento["tipo"] == "encerramento"
+        )
+        votos = list(Voto.objects.filter(eleicao=eleicao).order_by("pk"))
+
+        self.assertEqual(criacao["data_hora"], eleicao.criada_em)
+        self.assertEqual(criacao["referencia"], f"Pleito #{eleicao.pk}")
+        self.assertEqual(abertura["hash_atual"], Voto.HASH_INICIAL)
+        self.assertEqual(
+            [evento["titulo"] for evento in eventos_votos],
+            ["Cédula #001", "Cédula #002"],
+        )
+        self.assertEqual(
+            eventos_votos[0]["hash_anterior"],
+            votos[0].hash_anterior[:8],
+        )
+        self.assertEqual(
+            eventos_votos[0]["hash_atual"],
+            votos[0].hash_integridade[:8],
+        )
+        self.assertTrue(all(evento["elo_integro"] for evento in eventos_votos))
+        self.assertTrue(encerramento["paridade_confirmada"])
+
+        conteudo_timeline = resposta.content.decode().split(
+            '<section id="auditoria-timeline"', 1
+        )[1].split("</section>", 1)[0]
+        for dado_privado in (
+            "Nome Particular",
+            "privado1@example.com",
+            "privado-1",
+            "Chapa Um",
+            "Chapa Dois",
+        ):
+            self.assertNotIn(dado_privado, conteudo_timeline)
+        self.assertIn("Hash gênese:", conteudo_timeline)
+        self.assertIn("Hash anterior", conteudo_timeline)
+        self.assertIn("Hash atual", conteudo_timeline)
+        self.assertIn("Elo íntegro", conteudo_timeline)
+
+    def test_auditoria_recolhe_elos_intermediarios_quando_ha_mais_de_vinte_votos(self):
+        eleicao = self.criar_eleicao_encerrada_para_auditoria()
+        chapa = Chapa.objects.filter(eleicao=eleicao).first()
+        for indice in range(3, 22):
+            Voto.objects.create(
+                eleicao=eleicao,
+                chapa=chapa,
+                tipo_voto=Voto.Tipo.VALIDO,
+                codigo_comprovante=f"SEQ{indice:09d}",
+            )
+
+        resposta = self.client.get(
+            reverse("eleicao:auditoria_eleicao", args=[eleicao.pk])
+        )
+
+        eventos_votos = [
+            evento
+            for evento in resposta.context["timeline_eventos"]
+            if evento["tipo"] == "voto"
+        ]
+        self.assertEqual(len(eventos_votos), 21)
+        self.assertEqual(
+            sum(evento["mostrar_por_padrao"] for evento in eventos_votos),
+            8,
+        )
+        self.assertTrue(resposta.context["timeline_tem_elos_ocultos"])
+        self.assertContains(resposta, "Expandir todos os elos da cadeia")
+
     def test_auditoria_sinaliza_alteracao_de_cedula_na_cadeia(self):
         eleicao = self.criar_eleicao_encerrada_para_auditoria()
         voto = Voto.objects.filter(eleicao=eleicao).first()
@@ -173,6 +250,13 @@ class FluxoVotacaoTests(TestCase):
         self.assertFalse(resposta.context["cadeia_integra"])
         self.assertContains(resposta, "inconsistências detectadas na cadeia de votos")
         self.assertContains(resposta, "hash de integridade divergente")
+        evento_voto_adulterado = next(
+            evento
+            for evento in resposta.context["timeline_eventos"]
+            if evento["tipo"] == "voto"
+        )
+        self.assertFalse(evento_voto_adulterado["elo_integro"])
+        self.assertContains(resposta, "Elo inválido")
 
     def test_auditoria_sinaliza_divergencia_entre_comparecimento_e_cedulas(self):
         eleicao = self.criar_eleicao_encerrada_para_auditoria()
