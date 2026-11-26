@@ -99,7 +99,7 @@ def painel(request):
                 "total_erros": eleitores.exclude(erro_envio="").count(),
                 "total_votos": Voto.objects.filter(eleicao=eleicao).count(),
                 "participacao": (
-                    round(eleitores_votantes * 100 / total_eleitores, 1)
+                    eleitores_votantes * 100 / total_eleitores
                     if total_eleitores
                     else 0
                 ),

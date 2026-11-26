@@ -19,6 +19,7 @@ from PIL import Image
 from .forms import ChapaForm
 from .models import Chapa, Eleicao, Eleitor, Voto
 from .painel_views import _normalizar_linhas
+from .templatetags.eleicao_tags import percentual_legivel
 
 
 class PainelComissaoTests(TestCase):
@@ -272,6 +273,31 @@ class PainelComissaoTests(TestCase):
         self.assertContains(resposta, "flex-direction: column")
         self.assertNotContains(resposta, "data-sidebar-toggle-label")
         self.assertContains(resposta, "localStorage")
+
+    def test_dashboard_exibe_percentual_positivo_com_um_voto_em_muitos_eleitores(self):
+        eleitor = self.criar_eleitor()
+        eleitor.ja_votou = True
+        eleitor.save(update_fields=("ja_votou",))
+        Eleitor.objects.bulk_create(
+            [
+                Eleitor(
+                    eleicao=self.eleicao,
+                    nome=f"Eleitor {indice}",
+                    email=f"eleitor{indice}@example.com",
+                    matricula=f"matricula-{indice}",
+                )
+                for indice in range(2000)
+            ]
+        )
+
+        resposta = self.client.get(reverse("eleicao:painel"))
+
+        self.assertGreater(resposta.context["participacao"], 0)
+        self.assertContains(resposta, "0,05%")
+
+    def test_percentual_muito_pequeno_ganha_precisao_e_zero_permanece_zero(self):
+        self.assertEqual(percentual_legivel(100 / 20001), "0,005")
+        self.assertEqual(percentual_legivel(0), "0,00")
 
     def test_dashboard_esconde_indicadores_sem_eleicao_ativa(self):
         self.eleicao.ativa = False

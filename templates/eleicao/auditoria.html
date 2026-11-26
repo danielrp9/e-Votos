@@ -1,4 +1,5 @@
 {% extends "eleicao/base.html" %}
+{% load eleicao_tags %}
 {% block title %}Auditoria Pública{% endblock %}
 {% block main_class %}mx-auto w-full max-w-6xl px-4 py-12 sm:px-6 lg:px-8{% endblock %}
 {% block content %}
@@ -155,12 +156,12 @@
                         <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
                             <dt class="text-sm text-slate-500">Comparecimento</dt>
                             <dd class="mt-1 text-xl font-semibold">{{ dados_boletim.comparecimento }}</dd>
-                            <dd class="text-sm text-slate-500">{{ dados_boletim.percentual_comparecimento|floatformat:2 }}%</dd>
+                            <dd class="text-sm text-slate-500">{{ dados_boletim.percentual_comparecimento|percentual_legivel:2 }}%</dd>
                         </div>
                         <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
                             <dt class="text-sm text-slate-500">Abstenções</dt>
                             <dd class="mt-1 text-xl font-semibold">{{ dados_boletim.abstencoes }}</dd>
-                            <dd class="text-sm text-slate-500">{{ dados_boletim.percentual_abstencoes|floatformat:2 }}%</dd>
+                            <dd class="text-sm text-slate-500">{{ dados_boletim.percentual_abstencoes|percentual_legivel:2 }}%</dd>
                         </div>
                         <div class="rounded-lg border border-slate-200 bg-slate-50 p-4">
                             <dt class="text-sm text-slate-500">Total de votos</dt>
@@ -200,7 +201,7 @@
                                             <td class="px-4 py-3">{{ chapa.numero }}</td>
                                             <td class="px-4 py-3">{{ chapa.nome }}{% if chapa.vencedora %} <span class="text-emerald-800">(Vencedora)</span>{% endif %}</td>
                                             <td class="px-4 py-3 text-right">{{ chapa.total_votos }}</td>
-                                            <td class="px-4 py-3 text-right">{{ chapa.percentual|floatformat:2 }}%</td>
+                                            <td class="px-4 py-3 text-right">{{ chapa.percentual|percentual_legivel:2 }}%</td>
                                         </tr>
                                     {% empty %}
                                         <tr><td colspan="4" class="px-4 py-3 text-slate-500">Nenhuma chapa cadastrada.</td></tr>
